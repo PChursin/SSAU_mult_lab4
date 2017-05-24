@@ -43,6 +43,8 @@
     <UseDebugLibraries>true</UseDebugLibraries>
     <PlatformToolset>v140</PlatformToolset>
     <CharacterSet>Unicode</CharacterSet>
+    <UseIntelIPP>false</UseIntelIPP>
+    <UseIntelTBB>true</UseIntelTBB>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'" Label="Configuration">
     <ConfigurationType>Application</ConfigurationType>
@@ -50,7 +52,7 @@
     <PlatformToolset>v140</PlatformToolset>
     <WholeProgramOptimization>true</WholeProgramOptimization>
     <CharacterSet>Unicode</CharacterSet>
-    <UseIntelIPP>true</UseIntelIPP>
+    <UseIntelIPP>false</UseIntelIPP>
     <UseIntelTBB>true</UseIntelTBB>
   </PropertyGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.props" />
@@ -105,6 +107,7 @@
       <Optimization>Disabled</Optimization>
       <PreprocessorDefinitions>_DEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <AdditionalIncludeDirectories>E:\programming\openCV\opencv\sources\modules\videoio\include;E:\programming\openCV\opencv\sources\modules\imgcodecs\include;E:\programming\openCV\opencv\sources\modules\objdetect\include;E:\programming\openCV\opencv\sources\modules\core\include;E:\programming\openCV\opencv\sources\modules\highgui\include;E:\programming\openCV\opencv\sources\modules\imgproc\include;E:\programming\openCV\opencv\sources\modules\ml\include;E:\programming\openCV\opencv\build\include;E:\programming\openCV\opencv\sources\modules\features2d\include;E:\programming\openCV\opencv\extra_modules\modules\xfeatures2d\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <OpenMPSupport>true</OpenMPSupport>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
@@ -141,6 +144,7 @@
       <IntrinsicFunctions>true</IntrinsicFunctions>
       <PreprocessorDefinitions>NDEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <AdditionalIncludeDirectories>E:\programming\openCV\opencv\sources\modules\videoio\include;E:\programming\openCV\opencv\sources\modules\imgcodecs\include;E:\programming\openCV\opencv\sources\modules\objdetect\include;E:\programming\openCV\opencv\sources\modules\core\include;E:\programming\openCV\opencv\sources\modules\highgui\include;E:\programming\openCV\opencv\sources\modules\imgproc\include;E:\programming\openCV\opencv\sources\modules\ml\include;E:\programming\openCV\opencv\build\include;E:\programming\openCV\opencv\sources\modules\features2d\include;E:\programming\openCV\opencv\extra_modules\modules\xfeatures2d\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <OpenMPSupport>true</OpenMPSupport>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>

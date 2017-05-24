@@ -7,14 +7,14 @@ using namespace cv;
 using namespace cv::xfeatures2d;
 using namespace std;
 
-const int nDetectors = 10;
-const char* detectors[] = { "FAST", "STAR", "SIFT", "SURF",
-	"ORB", "MSER", "GFTT", "BRISK", "AKAZE", "SimpleBlob" };
-enum { USE_FAST=0, USE_STAR, USE_SIFT, USE_SURF, USE_ORB,
-	USE_MSER, USE_GFTT, USE_BRISK, USE_AKAZE, USE_SimpleBlob };
-const int nDescriptors = 4;
-const char* descriptors[] = { "SIFT", "SURF", "BRIEF", "ORB"};
-enum { SIFT_DESC=0, SURF_DESC, BRIEF_DESC, ORB_DESC};
+const int nDetectors = 9;
+const char* detectors[] = { "FAST", "SIFT", "SURF",
+	"ORB", "MSER", "GFTT", "BRISK", "AKAZE", "KAZE" };
+enum { USE_FAST=0, USE_SIFT, USE_SURF, USE_ORB,
+	USE_MSER, USE_GFTT, USE_BRISK, USE_AKAZE, USE_KAZE};
+const int nDescriptors = 3;
+const char* descriptors[] = { "SIFT", "SURF", "KAZE"};
+enum { SIFT_DESC=0, SURF_DESC, KAZE_DESC};
 
 Ptr<FeatureDetector> detector;
 Ptr<DescriptorExtractor> descriptor;
@@ -34,8 +34,7 @@ Ptr<DescriptorExtractor> getDescriptorExtractor() {
 	{
 	case SIFT_DESC: return SIFT::create();
 	case SURF_DESC: return SURF::create();
-	case BRIEF_DESC: return BriefDescriptorExtractor::create();
-	case ORB_DESC: return ORB::create();
+	case KAZE_DESC: return KAZE::create();
 	}
 }
 
@@ -53,7 +52,6 @@ Ptr<FeatureDetector> getFeatureDetector() {
 	switch (choice)
 	{
 	case USE_FAST: return FastFeatureDetector::create();
-	case USE_STAR: return StarDetector::create();
 	case USE_SIFT: return SIFT::create();
 	case USE_SURF: return SURF::create();
 	case USE_ORB: return ORB::create();
@@ -61,11 +59,11 @@ Ptr<FeatureDetector> getFeatureDetector() {
 	case USE_GFTT: return GFTTDetector::create();
 	case USE_BRISK: return BRISK::create();
 	case USE_AKAZE: return AKAZE::create();
-	case USE_SimpleBlob: return SimpleBlobDetector::create();
+	case USE_KAZE: return KAZE::create();
 	}
 }
 
-int main(int argc, char* argv[])
+void trainModel()
 {
 	detector = getFeatureDetector();
 	descriptor = getDescriptorExtractor();
@@ -79,16 +77,29 @@ int main(int argc, char* argv[])
 			descriptor,
 			descriptorsMatcher);
 
-	vector<string> allFiles, crocodile;
+	vector<string> allFiles, crocodile, folders;
+	vector<int> responsesV;
+	GetAllFolders("images", folders);
+
+	for (string s : folders) {
+		GetFilesInFolder(s, allFiles, "jpg");
+		responsesV.push_back(allFiles.size());
+	}
+	/*
 	GetFilesInFolder("bikes", allFiles, "jpg");
 	int nLeopards = allFiles.size();
 	GetFilesInFolder("bycicles", crocodile, "jpg");
-	allFiles.insert(allFiles.end(), crocodile.begin(), crocodile.end());
+	allFiles.insert(allFiles.end(), crocodile.begin(), crocodile.end());*/
 	vector<bool> isTrain(allFiles.size());
 
 	Mat category(allFiles.size(), 1, CV_32S);
-	for (int i = 0; i < allFiles.size(); i++)
-		category.at<int>(i) = (i < nLeopards ? 1 : -1);
+	int cat = 0;
+	for (int i = 0; i < allFiles.size(); i++) {
+		if (i == responsesV[cat])
+			cat++;
+		category.at<int>(i) = cat;
+	}
+		//category.at<int>(i) = (i < nLeopards ? 1 : -1);
 
 	InitRandomBoolVector(isTrain, 0.7);
 
@@ -98,13 +109,18 @@ int main(int argc, char* argv[])
 			nTrain++;
 
 	//bowExtractor->setVocabulary(TrainVocabulary(allFiles, isTrain, detector, descriptor, vocSize));
+	clock_t begin = clock();
 	bowExtractor->setVocabulary(TrainVocabulary(allFiles, isTrain, detector, descriptor, nTrain));
+	clock_t end = clock();
+	double elapsed_secs = double(end - begin) / CLOCKS_PER_SEC;
+	printf("Done! (took %.2fsecs)\n", elapsed_secs);
 
 	Mat trainData, trainResp;
 	ExtractTrainData(allFiles, isTrain, category, detector, bowExtractor, trainData, trainResp);
 
+	printf("Training classifier...");
 	Ptr<ml::RTrees> model = TrainClassifier(trainData, trainResp);
-
+	printf("Done!\n");
 	//Ptr<ml::SVM> model = TrainSVM(trainData, trainResp);
 	
 	//Mat predictions = PredictOnTestData(allFiles, isTrain, detector, bowExtractor, rTree);
@@ -113,9 +129,14 @@ int main(int argc, char* argv[])
 
 	Mat testResponses = GetTestResponses(category, isTrain);
 
-	float error = CalculateMisclassificationError(testResponses, predictions, allFiles, posMap);
+	float error = CalculateMisclassificationError(testResponses, predictions, allFiles, folders, posMap);
 
-	printf("Total images: %d\n Training set size: %d\n Classification error: %f\n",
+	printf("Total images: %zd\n Training set size: %d\n Classification error: %f\n",
 		allFiles.size(), nTrain, error);
+}
+
+int main(int argc, char* argv[])
+{
+	trainModel();
 	return 0;
 }

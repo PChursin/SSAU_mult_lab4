@@ -1,5 +1,6 @@
 #include "bow.h"
 #include <opencv2/highgui/highgui.hpp>
+#include <iostream>
 
 using namespace cv;
 using namespace std;
@@ -10,22 +11,36 @@ Mat TrainVocabulary(const vector<string>& filesList,
 					const Ptr<DescriptorExtractor>& descriptorsExtractor,
 					int vocSize)
 {
-	
 	BOWKMeansTrainer voc(vocSize);
-	Mat img, descriptors;
+	//Mat img;
+	//Mat descriptors;
 	Mat training_descriptors(1,
 		descriptorsExtractor->descriptorSize(), descriptorsExtractor->descriptorType());
-	vector <KeyPoint> keypoints;
+	//vector <KeyPoint> keypoints;
+
+	int toTrain = 0;
+	for (int i = 0; i < filesList.size(); i++)
+		if (is_voc[i]) toTrain++;
+
+	int c = 0;
+	#pragma omp parallel for
 	for (int i = 0; i < filesList.size(); i++) {
 		if (!is_voc[i])
 			continue;
-		img = imread(filesList[i]);
+		Mat img = imread(filesList[i]);
+		Mat descriptors;
+		vector <KeyPoint> keypoints;
 		keypointsDetector->detect(img, keypoints);
 		descriptorsExtractor->compute(img, keypoints, descriptors);
-		voc.add(descriptors);
-		//training_descriptors.push_back(descriptors);
+		#pragma omp critical
+		{
+			voc.add(descriptors);
+			printf("Detecting keypoints: %.0f%%\r", (c + 0.0) / toTrain*100.0);
+			c++;
+		}
 	}
-	//voc.add(training_descriptors);
+	printf("Detecting keypoints: Done!\n");
+	printf("Clustering...");
 	return voc.cluster();
 }
 
@@ -55,14 +70,23 @@ void ExtractTrainData(	const vector<string>& filesList,
 	trainData = Mat(trainCount, bowExtractor->descriptorSize(), CV_32F);
 	trainResponses = Mat(trainCount, 1, CV_32S);
 
-	Mat result;
+	//Mat result;
+	int c = 0;
+	#pragma omp parallel for
 	for (int i = 0; i < isTrain.size(); i++)
 		if (isTrain[i])
 		{
-			result = ExtractFeaturesFromImage(keypointsDetector, bowExtractor, filesList[i]);
-			trainData.push_back(result);
-			trainResponses.push_back(responses.row(i));
+			Mat result = ExtractFeaturesFromImage(keypointsDetector, bowExtractor, filesList[i]);
+			//trainData.at<Mat>(i) = result;
+			#pragma omp critical
+			{
+				trainData.push_back(result);
+				//trainResponses.at<Mat>(i) = responses.row(i);
+				trainResponses.push_back(responses.row(i));
+			}
+			printf("Preparing train set: %.0f%%\r", (++c + 0.0) / trainCount*100.0);
 		}
+	printf("Preparing train set: Done!\n");
 }
 
 Ptr<ml::RTrees> TrainClassifier(const Mat& trainData, const Mat& trainResponses)
@@ -135,7 +159,9 @@ Mat PredictOnTestData(	const vector<string>& filesList,
 		if (!isTrain[i]) {
 			predictions.at<int>(prediction++) = Predict(keypointsDetector, bowExtractor, classifier, filesList[i]);
 			posMap.push_back(prediction - 1);
+			printf("Prediction: %.0f%%\r", (prediction + 0.0) / testCount*100.0);
 		}
+	printf("Prediction: Done!\n");
 	return predictions;
 }
 
@@ -155,14 +181,15 @@ Mat GetTestResponses(const Mat& responses, const vector<bool>& isTrain)
 	return testResponses;
 }
 
-float CalculateMisclassificationError(Mat& responses, Mat& predictions, const std::vector<string>& files, const std::vector<int>& posMap)
+float CalculateMisclassificationError(Mat& responses, Mat& predictions, const std::vector<string>& files, const std::vector<string>& classes, const std::vector<int>& posMap)
 {
 	float error = 0;
 	printf("Misclassified files:\n");
 	for (int i = 0; i < responses.rows; i++)
 		if (responses.at<int>(i) != predictions.at<int>(i)) {
 			error++;
-			printf("%s\n", files[posMap[i]].c_str());
+			printf("%s classified as %s\n",
+				files[posMap[i]].c_str(), classes[predictions.at<int>(i)].c_str());
 		}
 
 	return error * 100 / responses.rows;

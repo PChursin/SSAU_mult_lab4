@@ -95,7 +95,9 @@ Ptr<ml::RTrees> TrainClassifier(const Mat& trainData, const Mat& trainResponses)
 	rTrees->setMaxDepth(200);
 	TermCriteria termCreteria;
 	termCreteria.type = TermCriteria::COUNT;
-	//rTrees->setTermCriteria(termCreteria);
+	termCreteria.maxCount = 200;
+	//termCreteria.
+	rTrees->setTermCriteria(termCreteria);
 
 	Mat types(1, trainData.cols + 1, CV_8U);
 	for (int i = 0; i < trainData.cols; i++)
@@ -117,7 +119,8 @@ Ptr<ml::SVM> TrainSVM(const Mat& trainData, const Mat& trainResponses) {
 	Ptr<ml::SVM> svm = ml::SVM::create();
 	TermCriteria termCreteria;
 	termCreteria.type = TermCriteria::COUNT;
-	//svm->setTermCriteria(termCreteria);
+	termCreteria.maxCount = 200;
+	svm->setTermCriteria(termCreteria);
 
 	svm->setKernel(ml::SVM::RBF);
 
@@ -158,7 +161,7 @@ Mat PredictOnTestData(	const vector<string>& filesList,
 	for (int i = 0; i < isTrain.size(); i++)
 		if (!isTrain[i]) {
 			predictions.at<int>(prediction++) = Predict(keypointsDetector, bowExtractor, classifier, filesList[i]);
-			posMap.push_back(prediction - 1);
+			posMap.push_back(i);
 			printf("Prediction: %.0f%%\r", (prediction + 0.0) / testCount*100.0);
 		}
 	printf("Prediction: Done!\n");
@@ -190,6 +193,7 @@ float CalculateMisclassificationError(Mat& responses, Mat& predictions, const st
 			error++;
 			printf("%s classified as %s\n",
 				files[posMap[i]].c_str(), classes[predictions.at<int>(i)].c_str());
+				//files[i].c_str(), classes[predictions.at<int>(i)].c_str());
 		}
 
 	return error * 100 / responses.rows;
